@@ -8,7 +8,7 @@ on:
       - master 
 
 env:
-  FLUTTER_SDK_VERSION: '3.19.3'
+  FLUTTER_SDK_VERSION: '3.22.2'
 
 jobs:
   build:
