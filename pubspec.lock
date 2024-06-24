@@ -376,10 +376,11 @@ packages:
   thermostat:
     dependency: "direct main"
     description:
-      name: thermostat
-      sha256: e0cd32e25c99efc6e46b3e67399361a16bb61118667549eadb13ed7a04d9ad49
-      url: "https://pub.dev"
-    source: hosted
+      path: "."
+      ref: master
+      resolved-ref: "9cc62a6f30870327fbdc21fddcc93db09758b7d2"
+      url: "https://github.com/jbbjarnason/thermostat.git"
+    source: git
     version: "1.1.5"
   typed_data:
     dependency: transitive

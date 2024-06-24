@@ -33,7 +33,7 @@ dependencies:
   mqtt_client: ^10.2.0
   thermostat:
     git:
-      url: git://github.com/jbbjarnason/thermostat.git
+      url: https://github.com/jbbjarnason/thermostat.git
       ref: master
   shared_preferences: ^2.2.2
   provider: ^6.1.2
