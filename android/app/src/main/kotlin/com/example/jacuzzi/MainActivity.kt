@@ -1,4 +1,4 @@
-package com.example.jacuzzi
+package dev.elmind.jacuzzi
 
 import io.flutter.embedding.android.FlutterActivity
 
