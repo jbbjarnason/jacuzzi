@@ -19,7 +19,7 @@ jobs:
       JAVA_VERSION: 12.0
       FLUTTER_VERSION: 3.24.1
       AAB_PATH: build/app/outputs/bundle/release/app-release.aab
-      KEYSTORE_PATH: android/upload-keystore.jks
+      KEYSTORE_PATH: android/app/upload-keystore.jks
       KEY_PROPS_PATH: android/key.properties
       SERVICE_ACCOUNT_PATH: store_credentials.json
     steps:
