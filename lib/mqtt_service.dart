@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+import 'package:flutter/foundation.dart';
 
 class MQTTService {
   late MqttServerClient client;
@@ -8,14 +9,18 @@ class MQTTService {
 
   MQTTService();
 
-  Future<bool> connect(String server, int port, String clientId,
-      {String? username, String? password}) async {
+  Future<bool> connect(String server, int port, String clientId, {String? username, String? password}) async {
     client = MqttServerClient.withPort(server, clientId, port);
     client.secure = true; // Enable the secure connection
     // Depending on the broker and environment, you might need to adjust security context and set it to the client
     // For example, for self-signed certificates, you might need to create a SecurityContext and add the certificate
     // Here's a basic configuration:
-    client.securityContext = SecurityContext.defaultContext;
+    if (kIsWeb) {
+      client.secure = false; // Web manages SSL/TLS automatically
+    } else {
+      client.secure = true; // Use SecurityContext on non-web platforms
+      client.securityContext = SecurityContext.defaultContext;
+    }
     // Additional client configuration...
     try {
       // Your existing connection logic here
@@ -42,8 +47,7 @@ class MQTTService {
       print("MQTT Client Connected");
       return true;
     } else {
-      print(
-          'ERROR MQTT Client Connection failed - disconnecting, status is ${client!.connectionStatus}');
+      print('ERROR MQTT Client Connection failed - disconnecting, status is ${client!.connectionStatus}');
       return false;
     }
   }
@@ -61,13 +65,10 @@ class MQTTService {
   }
 
   void _setupMessageListener() {
-    client.updates
-        ?.listen((List<MqttReceivedMessage<MqttMessage>> messageList) {
+    client.updates?.listen((List<MqttReceivedMessage<MqttMessage>> messageList) {
       for (var messageData in messageList) {
-        final MqttPublishMessage recMess =
-            messageData.payload as MqttPublishMessage;
-        final String message =
-            MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
+        final MqttPublishMessage recMess = messageData.payload as MqttPublishMessage;
+        final String message = MqttPublishPayload.bytesToStringAsString(recMess.payload.message);
         final String topic = messageData.topic;
 
         // Iterate through all handlers to find a match for the current topic
