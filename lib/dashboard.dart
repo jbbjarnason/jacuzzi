@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'mqtt_service.dart'; // Adjust this import based on your project structure
 import 'package:thermostat/thermostat.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class AppDrawer extends StatelessWidget {
   final String currentRoute;
@@ -24,6 +27,12 @@ class AppDrawer extends StatelessWidget {
             text: 'Dashboard',
             routeName: '/dashboard',
             isSelected: currentRoute == '/dashboard',
+          ),
+          _createDrawerItem(
+            context: context,
+            text: 'History',
+            routeName: '/history',
+            isSelected: currentRoute == '/history',
           ),
           _createDrawerItem(
             context: context,
@@ -202,9 +211,173 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 }
+class TemperatureHistoryWidget extends StatefulWidget {
+  const TemperatureHistoryWidget({super.key});
+
+  @override
+  State<TemperatureHistoryWidget> createState() =>
+      _TemperatureHistoryWidgetState();
+}
+
+class _TemperatureHistoryWidgetState extends State<TemperatureHistoryWidget> {
+  List<double> mixerTempHistory = [];
+  List<double> tubTempHistory = [];
+  MQTTService get mqttService =>
+      Provider.of<MQTTService>(context, listen: false);
+
+  @override
+  void initState() {
+    super.initState();
+
+    mqttService.subscribe('tempservo/mixer_temperature_history', (payload) {
+      setState(() {
+        mixerTempHistory = parseTemperatureData(payload);
+      });
+    });
+
+    mqttService.subscribe('tempservo/tub_temperature_history', (payload) {
+      setState(() {
+        tubTempHistory = parseTemperatureData(payload);
+      });
+    });
+
+    mqttService.publish('tempservo/request_temperature_history', "");
+  }
+
+List<double> parseTemperatureData(String message) {
+  // Parse the JSON array and filter out any nulls
+  List<dynamic> jsonData = jsonDecode(message)['temperature'];
+  return jsonData
+      .where((item) => item != null)
+      .map<double>((item) => item.toDouble())  // Ensure conversion to double
+      .toList();  // Return List<double>
+}
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BaseView(
+      title: 'Temperature History',
+      currentRoute: '/history',
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            ElevatedButton(
+              onPressed: () {
+                // Poll data when refresh button is pressed
+                mqttService.publish('tempservo/request_temperature_history', "");
+              },
+              child: Text('Refresh Data'),
+            ),
+            Expanded(
+              child: buildLineChart('Mixer Temperature History', mixerTempHistory),
+            ),
+            Expanded(
+              child: buildLineChart('Tub Temperature History', tubTempHistory),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+Widget buildLineChart(String title, List<double> temperatures) {
+  if (temperatures.isEmpty) {
+    // Handle the case when there are no temperature data points
+    return Center(
+      child: Text(
+        'No temperature data available',
+        style: TextStyle(fontSize: 16, color: Colors.red),
+      ),
+    );
+  }
+
+  final now = DateTime.now();
+  final List<FlSpot> spots = [];
+
+  for (int i = 0; i < temperatures.length; i++) {
+    final timestamp = now.subtract(Duration(minutes: temperatures.length - 1 - i));
+    final xValue = timestamp.millisecondsSinceEpoch.toDouble();
+    spots.add(FlSpot(xValue, temperatures[i]));
+  }
+
+  // Find the maximum value in the temperatures list
+  final maxY = (temperatures.reduce((a, b) => a > b ? a : b)).ceilToDouble();
+
+  // Correct logic to round up to the nearest multiple of 5
+  final roundedMaxY = (maxY % 5 == 0) ? maxY : (maxY + (5 - maxY % 5));
+
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      SizedBox(height: 10),
+      Expanded(
+        child: LineChart(
+          LineChartData(
+            maxY: roundedMaxY, // Set the max y-axis value to the rounded value
+            gridData: FlGridData(
+              show: true,
+              drawVerticalLine: false,
+              drawHorizontalLine: true,
+            ),
+            titlesData: FlTitlesData(
+              topTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+              bottomTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 40, // Extra space for bottom titles
+                  getTitlesWidget: (value, meta) {
+                    final date = DateTime.fromMillisecondsSinceEpoch(value.toInt());
+                    final formattedDate = DateFormat('HH:mm').format(date);
+                    return Text(formattedDate);
+                  },
+                ),
+              ),
+              leftTitles: AxisTitles(
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 50, // Extra space for y-axis titles
+                  getTitlesWidget: (value, meta) {
+                    return Text('${value.toStringAsFixed(1)}°C',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 12,
+                        ));
+                  },
+                ),
+              ),
+              rightTitles: AxisTitles(
+                sideTitles: SideTitles(showTitles: false),
+              ),
+            ),
+            borderData: FlBorderData(show: true),
+            lineBarsData: [
+              LineChartBarData(
+                spots: spots,
+                isCurved: true,
+                barWidth: 2,
+                belowBarData: BarAreaData(show: false),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+}
 
 class ConfigurationView extends StatefulWidget {
-  const ConfigurationView({Key? key}) : super(key: key);
+  const ConfigurationView({super.key});
 
   @override
   State<ConfigurationView> createState() => _ConfigurationViewState();

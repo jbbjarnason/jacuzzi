@@ -8,15 +8,58 @@ void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget { // Changed to StatefulWidget
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Create the instance of MQTTService
-    final mqttService = MQTTService();
+  _MyAppState createState() => _MyAppState();
+}
 
-    // Use Provider to supply the MQTTService instance to the widget tree
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver { // Added WidgetsBindingObserver
+  late MQTTService mqttService;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this); // Added observer
+    mqttService = MQTTService();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this); // Removed observer
+    mqttService.disconnect(); // Disconnect MQTT service
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) { // Handle app lifecycle changes
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _reconnectMQTT();
+    }
+  }
+
+  Future<void> _reconnectMQTT() async {
+    final prefs = await SharedPreferences.getInstance();
+    final mqttUrl = prefs.getString('mqttUrl') ?? '';
+    final mqttPort = int.parse(prefs.getString('mqttPort') ?? '8883');
+    final mqttUsername = prefs.getString('mqttUsername') ?? '';
+    final mqttPassword = prefs.getString('mqttPassword') ?? '';
+
+    if (mqttUrl.isNotEmpty) {
+      await mqttService.connect(
+        mqttUrl,
+        mqttPort,
+        'flutter_client_${DateTime.now().millisecondsSinceEpoch}',
+        username: mqttUsername,
+        password: mqttPassword,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Provider<MQTTService>(
       create: (context) => mqttService,
       child: MaterialApp(
@@ -26,11 +69,11 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
         ),
         initialRoute: '/',
-        // Define the routes
         routes: {
           '/': (context) => const MyHomePage(title: 'Login'),
           '/dashboard': (context) => const DashboardView(),
           '/configuration': (context) => const ConfigurationView(),
+          '/history': (context) => const TemperatureHistoryWidget(),
         },
       ),
     );
@@ -39,15 +82,6 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
 
   final String title;
 
@@ -82,10 +116,8 @@ class _MyHomePageState extends State<MyHomePage> {
     prefs.setString('mqttUsername', _mqttUsernameController.text);
     prefs.setString('mqttPassword', _mqttPasswordController.text);
 
-    // Initialize your MQTT service here with the server details
     final mqttService = Provider.of<MQTTService>(context, listen: false);
 
-    // Attempt to connect
     final isConnected = await mqttService.connect(
       _mqttUrlController.text,
       int.parse(_mqttPortController.text),
@@ -97,21 +129,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (isConnected) {
       Navigator.pushReplacementNamed(context, '/dashboard');
     } else {
-      // Handle connection failure (e.g., show an alert dialog)
       print("Failed to connect to MQTT broker");
     }
   }
-  // void _submitForm() {
-  //   setState(() {
-  //     // This call to setState tells the Flutter framework that something has
-  //     // changed in this State, which causes it to rerun the build method below
-  //     // so that the display can reflect the updated values. If we changed
-  //     // _counter without calling setState(), then the build method would not be
-  //     // called again, and so nothing would appear to happen.
-  //     // _counter++;
-  //   });
-  //   print("MQTT Port: ${_mqttPortController.text}");
-  // }
 
   @override
   void dispose() {
@@ -124,39 +144,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
         title: Text(widget.title),
       ),
       body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             TextFormField(
@@ -176,10 +170,9 @@ class _MyHomePageState extends State<MyHomePage> {
                   return 'Please enter a valid number';
                 }
                 if (portNum < 1 || portNum > 65535) {
-                  // Adjust min and max values as needed
                   return 'Port number must be between 1 and 65535';
                 }
-                return null; // Return null if the input is valid
+                return null;
               },
             ),
             TextFormField(
@@ -198,7 +191,7 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _connectAndNavigate,
         tooltip: 'Connect to the configured MQTT broker',
         child: const Text('Connect'),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ),
     );
   }
 }
