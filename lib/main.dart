@@ -38,6 +38,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver { // Added Wi
     if (state == AppLifecycleState.resumed) {
       _reconnectMQTT();
     }
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
+      mqttService.disconnect();
+    }
   }
 
   Future<void> _reconnectMQTT() async {

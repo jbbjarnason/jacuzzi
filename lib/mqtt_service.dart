@@ -1,26 +1,25 @@
 import 'dart:io';
 import 'package:mqtt_client/mqtt_client.dart';
+import 'mqtt_server_setup.dart' if (dart.library.js_interop) 'mqtt_browser_setup.dart' as mqttsetup;
 import 'package:mqtt_client/mqtt_server_client.dart';
 import 'package:flutter/foundation.dart';
 
 class MQTTService {
-  late MqttServerClient client;
+  late MqttClient client;
   final Map<String, Function(String)> _messageHandlers = {};
 
   MQTTService();
 
   Future<bool> connect(String server, int port, String clientId, {String? username, String? password}) async {
-    client = MqttServerClient.withPort(server, clientId, port);
-    client.secure = true; // Enable the secure connection
-    // Depending on the broker and environment, you might need to adjust security context and set it to the client
-    // For example, for self-signed certificates, you might need to create a SecurityContext and add the certificate
-    // Here's a basic configuration:
-    if (kIsWeb) {
-      client.secure = false; // Web manages SSL/TLS automatically
-    } else {
-      client.secure = true; // Use SecurityContext on non-web platforms
-      client.securityContext = SecurityContext.defaultContext;
+    client = mqttsetup.setup(server, clientId, port);
+
+    if (!kIsWeb) {
+      (client as MqttServerClient).secure = true;
+      (client as MqttServerClient).securityContext = SecurityContext.defaultContext;
     }
+
+    client.autoReconnect = true;
+    
     // Additional client configuration...
     try {
       // Your existing connection logic here
