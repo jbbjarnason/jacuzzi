@@ -4,7 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:pwa_install/pwa_install.dart'; // Add this import
 import 'mqtt_service.dart'; // Import the MQTT service
 import 'dashboard.dart'; // Import the DashboardView
-import 'package:web/web.dart' as web;
+import 'other_is_safari.dart' if (dart.library.js_interop) 'web_is_safari.dart' as is_safari;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Add this
@@ -57,7 +58,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver { // Added Wi
     final mqttUrl = prefs.getString('mqttUrl') ?? '';
     final mqttPort = int.parse(prefs.getString('mqttPort') ?? '8883');
     final mqttUsername = prefs.getString('mqttUsername') ?? '';
-    final mqttPassword = prefs.getString('mqttPassword') ?? '';
+    const secureStorage = FlutterSecureStorage();
+    final mqttPassword = await secureStorage.read(key: 'mqttPassword') ?? '';
 
     if (mqttUrl.isNotEmpty) {
       await mqttService.connect(
@@ -109,16 +111,22 @@ class _MyHomePageState extends State<MyHomePage> {
   final _mqttUsernameController = TextEditingController();
   final _mqttPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>(); // Add a key for the form
+  final _secureStorage = const FlutterSecureStorage();
 
   @override
   void initState() {
     super.initState();
-    _prefs.then((prefs) => {
-          _mqttUrlController.text = prefs.getString('mqttUrl') ?? '',
-          _mqttPortController.text = prefs.getString('mqttPort') ?? '8883',
-          _mqttUsernameController.text = prefs.getString('mqttUsername') ?? '',
-          _mqttPasswordController.text = prefs.getString('mqttPassword') ?? '',
-        });
+    _loadSavedValues();
+  }
+
+  Future<void> _loadSavedValues() async {
+    final prefs = await _prefs;
+    final savedPassword = await _secureStorage.read(key: 'mqttPassword');
+    
+    _mqttUrlController.text = prefs.getString('mqttUrl') ?? '';
+    _mqttPortController.text = prefs.getString('mqttPort') ?? '8883';
+    _mqttUsernameController.text = prefs.getString('mqttUsername') ?? '';
+    _mqttPasswordController.text = savedPassword ?? '';
   }
 
   Future<void> _connectAndNavigate() async {
@@ -126,7 +134,10 @@ class _MyHomePageState extends State<MyHomePage> {
     prefs.setString('mqttUrl', _mqttUrlController.text);
     prefs.setString('mqttPort', _mqttPortController.text);
     prefs.setString('mqttUsername', _mqttUsernameController.text);
-    prefs.setString('mqttPassword', _mqttPasswordController.text);
+    await _secureStorage.write(
+      key: 'mqttPassword',
+      value: _mqttPasswordController.text,
+    );
 
     final mqttService = Provider.of<MQTTService>(context, listen: false);
 
@@ -154,9 +165,8 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  bool isIOSSafari() {
-    final userAgent = web.window.navigator.userAgent.toLowerCase();
-    return userAgent.contains('iphone') || userAgent.contains('ipad') && userAgent.contains('safari');
+  bool isSafari() {
+    return is_safari.isSafari();
   }
 
   @override
@@ -172,9 +182,9 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () => PWAInstall().promptInstall_(),
               tooltip: 'Install App',
             ),
-          if (isIOSSafari())
+          if (isSafari())
             IconButton(
-              icon: const Icon(Icons.ios_share),
+              icon: const Icon(Icons.download),
               onPressed: () {
                 showDialog(
                   context: context,
@@ -237,10 +247,10 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _connectAndNavigate,
         tooltip: 'Connect to the configured MQTT broker',
-        child: const Text('Connect'),
+        label: const Text('Connect'),
       ),
     );
   }

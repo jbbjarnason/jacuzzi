@@ -1,0 +1,3 @@
+bool isSafari() {
+  return false;
+}
