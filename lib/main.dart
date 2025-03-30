@@ -6,6 +6,9 @@ import 'mqtt_service.dart'; // Import the MQTT service
 import 'dashboard.dart'; // Import the DashboardView
 import 'other_is_safari.dart' if (dart.library.js_interop) 'web_is_safari.dart' as is_safari;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+String getDefaultMqttPort() => kIsWeb ? '8884' : '8883';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Add this
@@ -56,7 +59,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver { // Added Wi
   Future<void> _reconnectMQTT() async {
     final prefs = await SharedPreferences.getInstance();
     final mqttUrl = prefs.getString('mqttUrl') ?? '';
-    final mqttPort = int.parse(prefs.getString('mqttPort') ?? '8883');
+    final mqttPort = int.parse(prefs.getString('mqttPort') ?? getDefaultMqttPort());
     final mqttUsername = prefs.getString('mqttUsername') ?? '';
     const secureStorage = FlutterSecureStorage();
     final mqttPassword = await secureStorage.read(key: 'mqttPassword') ?? '';
@@ -106,8 +109,7 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final Future<SharedPreferences> _prefs = SharedPreferences.getInstance();
   final _mqttUrlController = TextEditingController();
-  final _mqttPortController =
-      TextEditingController(text: '8883'); // Default port
+  final _mqttPortController = TextEditingController(text: getDefaultMqttPort());
   final _mqttUsernameController = TextEditingController();
   final _mqttPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>(); // Add a key for the form
@@ -124,7 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
     final savedPassword = await _secureStorage.read(key: 'mqttPassword');
     
     _mqttUrlController.text = prefs.getString('mqttUrl') ?? '';
-    _mqttPortController.text = prefs.getString('mqttPort') ?? '8883';
+    _mqttPortController.text = prefs.getString('mqttPort') ?? getDefaultMqttPort();
     _mqttUsernameController.text = prefs.getString('mqttUsername') ?? '';
     _mqttPasswordController.text = savedPassword ?? '';
   }
