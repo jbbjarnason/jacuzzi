@@ -165,65 +165,67 @@ class _DashboardViewState extends State<DashboardView> {
     return BaseView(
       title: 'Dashboard',
       currentRoute: '/dashboard',
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text('Tub Thermostat'),
-            Thermostat(
-              maxVal: 46, // todo fetch from mqtt
-              minVal: 32, // todo fetch from mqtt
-              curVal: tubCurrentTemp,
-              setPoint: tubTargetTemp,
-              formatCurVal: celsiusNumFormatting,
-              formatSetPoint: celsiusNumFormatting,
-              setPointMode: SetPointMode.displayAndEdit,
-              onChanged: changeTargetTemp,
-              turnOn: tubOn,
-              themeType: ThermostatThemeType.light,
-              theme: ThermostatTheme.light().copyWith(
-                glowColor: Colors.blue.withOpacity(0.3),
-                tickColor: Colors.grey[300],
-                thumbColor: Colors.blue,
-                dividerColor: Colors.grey[300],
-                ringColor: Colors.grey[100],
-                turnOnColor: Colors.blue,
+      body: SingleChildScrollView(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              ElevatedButton(
+                onPressed: () {
+                  if (tubOn) {
+                    mqttService.publish(
+                        "tempservo/climate/tub_thermostat/mode/command", "OFF");
+                  } else {
+                    mqttService.publish(
+                        "tempservo/climate/tub_thermostat/mode/command", "HEAT");
+                  }
+                },
+                child: Text(buttonLabel()),
               ),
-            ),
-            const Text('Mixer Thermostat'),
-            Thermostat(
-              maxVal: 46, // todo fetch from mqtt
-              minVal: 32, // todo fetch from mqtt
-              curVal: mixerCurrentTemp,
-              setPoint: mixerTargetTemp,
-              formatCurVal: celsiusNumFormatting,
-              formatSetPoint: celsiusNumFormatting,
-              setPointMode: SetPointMode.displayOnly,
-              turnOn: mixerOn,
-              themeType: ThermostatThemeType.light,
-              theme: ThermostatTheme.light().copyWith(
-                glowColor: Colors.blue.withOpacity(0.3),
-                tickColor: Colors.grey[300],
-                thumbColor: Colors.blue,
-                dividerColor: Colors.grey[300],
-                ringColor: Colors.grey[100],
-                turnOnColor: Colors.blue,
+              const SizedBox(height: 20),
+              const Text('Tub Thermostat'),
+              Thermostat(
+                maxVal: 46, // todo fetch from mqtt
+                minVal: 32, // todo fetch from mqtt
+                curVal: tubCurrentTemp,
+                setPoint: tubTargetTemp,
+                formatCurVal: celsiusNumFormatting,
+                formatSetPoint: celsiusNumFormatting,
+                setPointMode: SetPointMode.displayAndEdit,
+                onChanged: changeTargetTemp,
+                turnOn: tubOn,
+                themeType: ThermostatThemeType.light,
+                theme: ThermostatTheme.light().copyWith(
+                  glowColor: Colors.blue.withOpacity(0.3),
+                  tickColor: Colors.grey[300],
+                  thumbColor: Colors.blue,
+                  dividerColor: Colors.grey[300],
+                  ringColor: Colors.grey[100],
+                  turnOnColor: Colors.blue,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                if (tubOn) {
-                  mqttService.publish(
-                      "tempservo/climate/tub_thermostat/mode/command", "OFF");
-                } else {
-                  mqttService.publish(
-                      "tempservo/climate/tub_thermostat/mode/command", "HEAT");
-                }
-              },
-              child: Text(buttonLabel()),
-            ),
-          ],
+              const Text('Mixer Thermostat'),
+              Thermostat(
+                maxVal: 46, // todo fetch from mqtt
+                minVal: 32, // todo fetch from mqtt
+                curVal: mixerCurrentTemp,
+                setPoint: mixerTargetTemp,
+                formatCurVal: celsiusNumFormatting,
+                formatSetPoint: celsiusNumFormatting,
+                setPointMode: SetPointMode.displayOnly,
+                turnOn: mixerOn,
+                themeType: ThermostatThemeType.light,
+                theme: ThermostatTheme.light().copyWith(
+                  glowColor: Colors.blue.withOpacity(0.3),
+                  tickColor: Colors.grey[300],
+                  thumbColor: Colors.blue,
+                  dividerColor: Colors.grey[300],
+                  ringColor: Colors.grey[100],
+                  turnOnColor: Colors.blue,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
