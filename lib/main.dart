@@ -28,57 +28,82 @@ class MyApp extends StatefulWidget { // Changed to StatefulWidget
   _MyAppState createState() => _MyAppState();
 }
 
-class _MyAppState extends State<MyApp> with WidgetsBindingObserver { // Added WidgetsBindingObserver
-  late MQTTService mqttService;
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  MQTTService? mqttService;
+  bool isInitialized = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // Added observer
+    WidgetsBinding.instance.addObserver(this);
+    _initializeMQTT();
+  }
+
+  Future<void> _initializeMQTT() async {
     mqttService = MQTTService();
+    await _reconnectMQTT();
+    if (mounted) {
+      setState(() {
+        isInitialized = true;
+      });
+    }
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // Removed observer
-    mqttService.disconnect(); // Disconnect MQTT service
+    WidgetsBinding.instance.removeObserver(this);
+    mqttService?.disconnect();
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) { // Handle app lifecycle changes
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
       _reconnectMQTT();
     }
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden) {
-      mqttService.disconnect();
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.hidden || state == AppLifecycleState.detached) {
+      mqttService?.disconnect();
     }
   }
 
   Future<void> _reconnectMQTT() async {
-    final prefs = await SharedPreferences.getInstance();
-    final mqttUrl = prefs.getString('mqttUrl') ?? '';
-    final mqttPort = int.parse(prefs.getString('mqttPort') ?? getDefaultMqttPort());
-    final mqttUsername = prefs.getString('mqttUsername') ?? '';
-    const secureStorage = FlutterSecureStorage();
-    final mqttPassword = await secureStorage.read(key: 'mqttPassword') ?? '';
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final mqttUrl = prefs.getString('mqttUrl') ?? '';
+      final mqttPort = int.parse(prefs.getString('mqttPort') ?? getDefaultMqttPort());
+      final mqttUsername = prefs.getString('mqttUsername') ?? '';
+      const secureStorage = FlutterSecureStorage();
+      final mqttPassword = await secureStorage.read(key: 'mqttPassword') ?? '';
 
-    if (mqttUrl.isNotEmpty) {
-      await mqttService.connect(
-        mqttUrl,
-        mqttPort,
-        'flutter_client_${DateTime.now().millisecondsSinceEpoch}',
-        username: mqttUsername,
-        password: mqttPassword,
-      );
+      if (mqttUrl.isNotEmpty && mqttService != null) {
+        await mqttService!.connect(
+          mqttUrl,
+          mqttPort,
+          'flutter_client_${DateTime.now().millisecondsSinceEpoch}',
+          username: mqttUsername,
+          password: mqttPassword,
+        );
+      }
+    } catch (e) {
+      debugPrint('MQTT reconnection error: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Provider<MQTTService>(
-      create: (context) => mqttService,
+    if (!isInitialized) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+
+    return Provider<MQTTService>.value(
+      value: mqttService!,
       child: MaterialApp(
         title: 'Tub control',
         theme: ThemeData(
