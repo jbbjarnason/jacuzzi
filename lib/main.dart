@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:pwa_install/pwa_install.dart'; // Add this import
 import 'mqtt_service.dart'; // Import the MQTT service
 import 'dashboard.dart'; // Import the DashboardView
+import 'package:web/web.dart' as web;
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized(); // Add this
@@ -153,6 +154,11 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
+  bool isIOSSafari() {
+    final userAgent = web.window.navigator.userAgent.toLowerCase();
+    return userAgent.contains('iphone') || userAgent.contains('ipad') && userAgent.contains('safari');
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -165,6 +171,31 @@ class _MyHomePageState extends State<MyHomePage> {
               icon: const Icon(Icons.download),
               onPressed: () => PWAInstall().promptInstall_(),
               tooltip: 'Install App',
+            ),
+          if (isIOSSafari())
+            IconButton(
+              icon: const Icon(Icons.ios_share),
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Install App'),
+                    content: const Text(
+                      'To install this app on your iOS device:\n\n'
+                      '1. Tap the share button in Safari\n'
+                      '2. Scroll down and tap "Add to Home Screen"\n'
+                      '3. Tap "Add" in the top right'
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              tooltip: 'Add to Home Screen Instructions',
             ),
         ],
       ),
