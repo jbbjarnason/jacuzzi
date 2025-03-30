@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
+import 'package:pwa_install/pwa_install.dart'; // Add this import
 import 'mqtt_service.dart'; // Import the MQTT service
 import 'dashboard.dart'; // Import the DashboardView
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized(); // Add this
+
+  // Add PWA install setup
+  PWAInstall().setup(installCallback: () {
+    debugPrint('APP INSTALLED!');
+  });
+
   runApp(const MyApp());
 }
 
@@ -151,6 +159,14 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title),
+        actions: [
+          if (PWAInstall().installPromptEnabled)
+            IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: () => PWAInstall().promptInstall_(),
+              tooltip: 'Install App',
+            ),
+        ],
       ),
       body: Center(
         child: Column(
