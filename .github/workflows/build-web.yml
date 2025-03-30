@@ -35,7 +35,7 @@ jobs:
         run: flutter build web --release --base-href "/jacuzzi/"
 
       - name: Upload web
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: './build/web'
           retention-days: 1
@@ -60,4 +60,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v1
+        uses: actions/deploy-pages@v4
